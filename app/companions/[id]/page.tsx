@@ -1,9 +1,8 @@
-import React from 'react'
 
-const page = () => {
+const CompanionSession = () => {
   return (
     <div>companion session</div>
   )
 }
 
-export default page
+export default CompanionSession;

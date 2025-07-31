@@ -11,7 +11,7 @@ export const subjectsColors = {
   science: "#E5D0FF",
   maths: "#FFDA6E",
   language: "#BDE7FF",
-  coding: "#FFC8E4",
+  coding: "#fbc1dfff",
   history: "#FFECC8",
   economics: "#C8FFDF",
 };
