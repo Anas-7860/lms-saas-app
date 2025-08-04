@@ -8,12 +8,12 @@ const Navbar = () => {
   return (
     <nav className='navbar'>
         <Link href="/">
-        <div className="flex items-center gap-2.5 cursor-pointer">
+        <div className="flex items-center cursor-pointer">
             <Image 
-            src="/images/logo.svg" 
+            src="/images/logo.png" 
             alt="logo" 
-            width={46} 
-            height={44}
+            width={100} 
+            height={50}
             />
         </div>
         </Link>

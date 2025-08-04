@@ -1,7 +1,7 @@
 'use server';
 import { auth } from "@clerk/nextjs/server"
 import { createSupabaseClient } from "../supabase";
-import { create } from "domain";
+import { revalidatePath } from "next/cache";
 
 export const createCompanion = async(formData: CreateCompanion) => {
     const {userId:author} = await auth();
@@ -49,15 +49,108 @@ export const getCompanion = async(id:string)=>{
     return data[0];
 }
 export const addToSessionHistory = async (companionId: string) => {
-    const { userId } = await auth();
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  const supabase = createSupabaseClient();
+
+  // 1. Check if session already exists
+  const { data: existing, error: fetchError } = await supabase
+    .from("session_history")
+    .select("*")
+    .eq("companion_id", companionId)
+    .eq("user_id", userId)
+    .limit(1)
+    .single();
+
+  if (fetchError && fetchError.code !== "PGRST116") {
+    // Only throw if it's not the "no rows" error
+    throw new Error(fetchError.message);
+  }
+
+  if (existing) {
+    // Optional: You can update timestamp if you want recency tracking
+    return existing;
+  }
+
+  // 2. Insert if not exists
+  const { data, error } = await supabase.from("session_history").insert({
+    companion_id: companionId,
+    user_id: userId,
+  }).select().single();
+
+  if (error) throw new Error(error.message);
+
+  return data;
+};
+
+export const getRecentSessions = async (limit=10)=>{
     const supabase = createSupabaseClient();
-    const { data, error } = await supabase.from('session_history')
-        .insert({
-            companion_id: companionId,
-            user_id: userId,
-        })
+    const {data,error} = await supabase
+    .from('session_history')
+    .select(`companions:companion_id (*)`)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+    if(error) throw new Error(error.message);
+
+    return data.map(({companions})=>companions);
+}
+export const getUserSessions = async (userId:string,limit=10)=>{
+    const supabase = createSupabaseClient();
+    const {data,error} = await supabase
+    .from('session_history')
+    .select(`companions:companion_id (*)`)
+    .eq('user_id',userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+    if(error) throw new Error(error.message);
+
+    return data.map(({companions})=>companions);
+}
+export const getUserCompanions = async (userId:string)=>{
+    const supabase = createSupabaseClient();
+    const {data,error} = await supabase
+    .from('companions')
+    .select()
+    .eq('author',userId)
 
     if(error) throw new Error(error.message);
 
     return data;
 }
+
+export const newCompanionPermission = async()=>{
+    const {userId,has} = await auth();
+    const supabase = createSupabaseClient();
+
+    let limit =0;
+
+    if(has({plan:'pro'})){
+        return true;
+    }
+    else if(has({feature:"3_active_companions"})){
+        limit = 3;
+    }
+    else if(has({feature:"10_active_companions"})){
+        limit = 10;
+    }
+
+    const {data,error} = await supabase
+    .from('companions')
+    .select('id',{count:'exact'})
+    .eq("author",userId)
+
+    if(error) throw new Error(error.message);
+
+    const companionsCount = data?.length;
+
+    if(companionsCount >=limit){
+        return false;
+    }
+    else{
+        return true;
+    }
+}
+

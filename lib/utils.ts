@@ -68,7 +68,7 @@ Tutor Guidelines:
       "user-interrupted",
       "voice-input",
       "workflow.node.started",
-    ] as const,
+    ]as const,
     serverMessages: [] as const,
   };
 
